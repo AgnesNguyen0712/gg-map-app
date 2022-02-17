@@ -32,10 +32,12 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-   StreamSubscription? _locationSubscription;
+  StreamSubscription? _locationSubscription;
   final Location _locationTracker = Location();
-   Marker? marker;
-   Circle? circle;
+  Marker? marker;
+  Circle? circle;
+  Marker? markerSecond;
+  Circle? circleSecond;
   late GoogleMapController _controller;
 
   static const CameraPosition initialLocation = CameraPosition(
@@ -44,12 +46,16 @@ class _MyHomePageState extends State<MyHomePage> {
   );
 
   Future<Uint8List> getMarker() async {
-    ByteData byteData = await DefaultAssetBundle.of(context).load("assets/car_icon.png");
+    ByteData byteData =
+        await DefaultAssetBundle.of(context).load("assets/motor_icon.png");
     return byteData.buffer.asUint8List();
   }
 
   void updateMarkerAndCircle(LocationData newLocalData, Uint8List imageData) {
-    LatLng latlng = LatLng(newLocalData.latitude as double, newLocalData.longitude as double);
+    LatLng latlng = LatLng(
+        newLocalData.latitude as double, newLocalData.longitude as double);
+    var latitude = newLocalData.latitude! + 0.001;
+    LatLng latlng2 = LatLng(latitude, newLocalData.longitude as double);
     setState(() {
       marker = Marker(
           markerId: const MarkerId("home"),
@@ -61,18 +67,33 @@ class _MyHomePageState extends State<MyHomePage> {
           anchor: const Offset(0.5, 0.5),
           icon: BitmapDescriptor.fromBytes(imageData));
       circle = Circle(
-          circleId: const CircleId("car"),
+          circleId: const CircleId("motor"),
           radius: newLocalData.accuracy as double,
           zIndex: 1,
           strokeColor: Colors.blue,
           center: latlng,
+          fillColor: Colors.blue.withAlpha(70));
+      markerSecond = Marker(
+          markerId: const MarkerId("home2"),
+          position: latlng2,
+          rotation: newLocalData.heading as double,
+          draggable: false,
+          zIndex: 2,
+          flat: true,
+          anchor: const Offset(0.5, 0.5),
+          icon: BitmapDescriptor.fromBytes(imageData));
+      circleSecond = Circle(
+          circleId: const CircleId("motor2"),
+          radius: newLocalData.accuracy as double,
+          zIndex: 1,
+          strokeColor: Colors.blue,
+          center: latlng2,
           fillColor: Colors.blue.withAlpha(70));
     });
   }
 
   void getCurrentLocation() async {
     try {
-
       Uint8List imageData = await getMarker();
       var location = await _locationTracker.getLocation();
 
@@ -80,16 +101,16 @@ class _MyHomePageState extends State<MyHomePage> {
 
       _locationSubscription?.cancel();
 
-
-      _locationSubscription = _locationTracker.onLocationChanged.listen((newLocalData) {
+      _locationSubscription =
+          _locationTracker.onLocationChanged.listen((newLocalData) {
         _controller.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(
             bearing: 192.8334901395799,
-            target: LatLng(newLocalData.latitude as double, newLocalData.longitude as double),
+            target: LatLng(newLocalData.latitude as double,
+                newLocalData.longitude as double),
             tilt: 0,
             zoom: 18.00)));
         updateMarkerAndCircle(newLocalData, imageData);
       });
-
     } on PlatformException catch (e) {
       if (e.code == 'PERMISSION_DENIED') {
         debugPrint("Permission Denied");
@@ -112,12 +133,11 @@ class _MyHomePageState extends State<MyHomePage> {
       body: GoogleMap(
         mapType: MapType.hybrid,
         initialCameraPosition: initialLocation,
-        markers: Set.of((marker != null) ? [marker!] : []),
-        circles: Set.of((circle != null) ? [circle!] : []),
+        markers: Set.of((marker != null) ? [marker!, markerSecond!] : []),
+        circles: Set.of((circle != null) ? [circle!, circleSecond!] : []),
         onMapCreated: (GoogleMapController controller) {
           _controller = controller;
         },
-
       ),
       floatingActionButton: FloatingActionButton(
           child: const Icon(Icons.location_searching),
